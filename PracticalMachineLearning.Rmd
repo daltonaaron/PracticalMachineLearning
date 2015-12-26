@@ -1,0 +1,105 @@
+---
+title: "PracticalMachineLearning"
+author: "Aaron Dalton"
+date: "Saturday, December 26, 2015"
+output: html_document
+---
+
+```{r}
+
+library(knitr);
+library(caret); 
+library(kernlab); 
+library(randomForest);
+library(rpart);
+library(ggplot2);
+
+
+#Read in the datasets
+
+setwd("C:/Users/VHAPALDALTOA/Downloads")
+
+##read in the data
+
+training<- read.table("pml-training.csv" ,
+                      sep = ",",
+                      header= TRUE,
+                      na.strings=c("#DIV/0!"))
+
+testing<- read.table("pml-testing.csv" ,
+                     sep = ",",
+                     header= TRUE,
+                     na.strings=c("#DIV/0!"))
+
+
+# There are unneed variable in the files... droping those.
+
+myvars <- names(training) %in% c("X", "user_name", "raw_timestamp_part_1",
+                                 "raw_timestamp_part_2", "cvtd_timestamp",
+                                 "new_window", "num_window") 
+newtraining <- training[!myvars]
+
+newtesting <- testing[!myvars]
+
+
+
+#lots of Records containg NAs, removing them
+
+MostlyNAs<-which(colSums(is.na(newtraining)) > 5000)
+
+newtraining2<-newtraining[, -MostlyNAs]
+newtesting2<-newtesting[, -MostlyNAs]
+
+
+#Delete the zero-variance/ non-usable of the remaning variable/columns
+
+nzv2 <- nearZeroVar(newtraining2)
+filteredTrainingCleaned <- newtraining2[, -nzv2]
+
+
+#This is the variable we are trying to predict
+plot(filteredTrainingCleaned$classe)
+
+#break out a sample to see how good at predicitng the training set is
+inTrain <- createDataPartition(filteredTrainingCleaned$classe, p=0.75, list = FALSE)
+x_train <- filteredTrainingCleaned[inTrain,]
+x_test <- filteredTrainingCleaned[-inTrain,]
+
+
+#Basic Tree--- dont run this unless you have time to kill...
+library(rpart.plot)
+
+treeModel <- rpart(classe ~ ., data=x_train, method="class")
+prp(treeModel)
+
+
+#Training Model
+
+rfModel <- randomForest(classe ~ ., data=x_train, importance = TRUE, ntrees = 10)
+rfModel
+
+#Confussion Matrix
+PredictTraining <- predict(rfModel, x_train)
+print(confusionMatrix(PredictTraining, x_train$classe))
+
+#Note Training accuracy ~= 1.  Maybe a rounding problem.  
+#The error rate is probably very very small
+#Test it agains the subset of data
+
+
+PredictTesting <- predict(rfModel, x_test)
+print(confusionMatrix(PredictTesting, x_test$classe))
+
+#Note test accuracy =~0.9955 
+
+#Predicitons agains the 20 observations in the test dataset
+
+PredictTest <- predict(rfModel, testing)
+PredictTest
+
+#Then submit the answers
+
+
+```
+
+
